@@ -19,6 +19,12 @@ type Header struct {
 	Endian      string
 }
 
+type DataElement struct {
+	Type          uint
+	NumberOfBytes uint
+	RawBytes      []byte
+}
+
 type Mat struct {
 	H    Header
 	Data interface{}
@@ -38,9 +44,11 @@ func DecodeHeader(f *os.File) Header {
 	return out
 }
 
-func DecodeData(f *os.File) interface{} {
-	var out Mat
+func SplitData(f *os.File) []DataElement {
+	delements := make([]DataElement, 0, 10)
 	for {
+		var delm DataElement
+
 		// Read first 4 bytes and check if this element is small.
 		tgbuffer1 := [4]byte{}
 		readcnt, err := f.Read(tgbuffer1[:])
@@ -74,14 +82,34 @@ func DecodeData(f *os.File) interface{} {
 			}
 			nob = uint(binary.LittleEndian.Uint32(tgbuffer2[:]))
 		}
+		dataBuffer := make([]byte, nob)
+		readcnt, err = f.Read(dataBuffer) // maybe removed
+
+		delm.Type = uint(typ)
+		delm.NumberOfBytes = uint(nob)
+		delm.RawBytes = dataBuffer
+
+		delements = append(delements, delm)
+
 		fmt.Println("type = ", typ)
 		fmt.Println("number of bytes = ", nob)
-		dataBuffer := make([]byte, nob)
-		readcnt, err = f.Read(dataBuffer)
 		fmt.Println("read count = ", readcnt)
 		// do something
 	}
 
+	return delements
+}
+
+func DecodeDataElement(delm DataElement) interface{} {
+	return nil
+}
+
+func DecodeData(f *os.File) interface{} {
+	dataElements := SplitData(f)
+	for _, delm := range dataElements {
+		DecodeDataElement(delm)
+	}
+	var out Mat
 	return out
 }
 
